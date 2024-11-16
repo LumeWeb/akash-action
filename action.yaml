@@ -1,0 +1,134 @@
+name: Setup Akash Environment
+description: 'Sets up Akash CLI, imports certificate, and configures environment for Terraform'
+
+inputs:
+    wallet-name:
+        description: 'Name of the Akash wallet to create'
+        required: true
+        default: 'akash_deploy'
+    mnemonic:
+        description: 'Mnemonic phrase for account recovery'
+        required: true
+    cert-content:
+        description: 'PEM certificate content'
+        required: true
+    cert-id:
+        description: 'Certificate ID to use for the PEM file name'
+        required: true
+
+runs:
+    using: "composite"
+    steps:
+        - name: Install Akash CLI
+          shell: bash
+          run: |
+              curl -sfL https://raw.githubusercontent.com/akash-network/provider/main/install.sh | bash
+              sudo mv ./bin/provider-services /usr/local/bin
+
+        - name: Clean Environment
+          shell: bash
+          run: |
+              # Kill any existing gpg-agent processes
+              killall -9 gpg-agent || true
+
+              # Remove any existing GPG and keyring files
+              rm -rf ~/.gnupg
+              rm -rf ~/.config/akash
+
+              # Initialize fresh GPG environment
+              mkdir -p ~/.gnupg
+              chmod 700 ~/.gnupg
+              echo "pinentry-mode loopback" > ~/.gnupg/gpg.conf
+              echo "allow-loopback-pinentry" > ~/.gnupg/gpg-agent.conf
+
+              # Restart GPG agent
+              gpg-connect-agent reloadagent /bye
+
+        - name: Setup GPG and Pass
+          shell: bash
+          run: |
+              # Create key config
+              cat >key-config <<EOF
+              Key-Type: RSA
+              Key-Length: 4096
+              Subkey-Type: RSA
+              Subkey-Length: 4096
+              Name-Real: Akash Deploy Key
+              Name-Email: akash@localhost
+              Expire-Date: 0
+              %no-protection
+              %commit
+              EOF
+
+              # Generate key
+              gpg --batch --quiet --generate-key key-config
+
+              # Get fingerprint and set ultimate trust
+              GPG_FINGERPRINT=$(gpg --list-secret-keys --with-colons | grep ^fpr | tail -n1 | cut -d: -f10)
+              echo "$GPG_FINGERPRINT:6:" | gpg --import-ownertrust
+
+              # Get key ID and initialize pass
+              GPG_KEY_ID=$(gpg --list-secret-keys --keyid-format LONG 2>/dev/null | grep sec | tail -n1 | awk '{print $2}' | cut -d'/' -f2)
+              pass init "$GPG_KEY_ID"
+
+              # Clean up
+              rm key-config
+
+        - name: Setup Environment Variables
+          shell: bash
+          run: |
+              # First export the base URL
+              export AKASH_NET="https://raw.githubusercontent.com/akash-network/net/main/mainnet"
+
+              {
+                echo "AKASH_NET=$AKASH_NET"
+                echo "AKASH_VERSION=$(curl -s https://api.github.com/repos/akash-network/provider/releases/latest | jq -r '.tag_name')"
+                echo "AKASH_CHAIN_ID=$(curl -s "$AKASH_NET/chain-id.txt")"
+                echo "AKASH_NODE=$(curl -s "$AKASH_NET/rpc-nodes.txt" | shuf -n 1)"
+                echo "AKASH_KEYRING_BACKEND=os"
+                echo "AKASH_KEY_NAME=${{ inputs.wallet-name }}"
+                echo "AKASH_GAS=auto"
+                echo "AKASH_GAS_ADJUSTMENT=1.25"
+                echo "AKASH_GAS_PRICES=0.025uakt"
+                echo "AKASH_SIGN_MODE=amino-json"
+              } >> "$GITHUB_ENV"
+
+        - name: Create and Recover Account
+          shell: bash
+          env:
+              AKASH_NET: ${{ env.AKASH_NET }}
+              AKASH_VERSION: ${{ env.AKASH_VERSION }}
+              AKASH_CHAIN_ID: ${{ env.AKASH_CHAIN_ID }}
+              AKASH_NODE: ${{ env.AKASH_NODE }}
+              AKASH_KEYRING_BACKEND: ${{ env.AKASH_KEYRING_BACKEND }}
+              AKASH_KEY_NAME: ${{ env.AKASH_KEY_NAME }}
+              AKASH_GAS: ${{ env.AKASH_GAS }}
+              AKASH_GAS_ADJUSTMENT: ${{ env.AKASH_GAS_ADJUSTMENT }}
+              AKASH_GAS_PRICES: ${{ env.AKASH_GAS_PRICES }}
+              AKASH_SIGN_MODE: ${{ env.AKASH_SIGN_MODE }}
+          run: |
+              # Recover account silently and save output
+              echo "${{ inputs.mnemonic }}" | provider-services keys add "${{ inputs.wallet-name }}" --recover --output json > key_output.json 2>&1
+
+              # Extract and export account address from JSON output
+              AKASH_ACCOUNT_ADDRESS=$(jq -r '.address' key_output.json)
+              echo "AKASH_ACCOUNT_ADDRESS=$AKASH_ACCOUNT_ADDRESS" >> "$GITHUB_ENV"
+
+              # Show minimal output
+              echo "Account recovered successfully"
+
+              # Clean up
+              rm key_output.json
+
+        - name: Import Certificate
+          shell: bash
+          run: |
+              mkdir -p "$HOME/.akash"
+              echo "${{ inputs.cert-content }}" > "$HOME/.akash/${{ inputs.cert-id }}.pem"
+              chmod 600 "$HOME/.akash/${{ inputs.cert-id }}.pem"
+
+        - name: Verify Setup
+          shell: bash
+          run: |
+              echo "✓ Akash CLI version: $(provider-services version)"
+              echo "✓ Environment configured successfully"

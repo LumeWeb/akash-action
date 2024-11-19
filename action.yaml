@@ -88,7 +88,7 @@ runs:
                 echo "AKASH_KEYRING_BACKEND=os"
                 echo "AKASH_KEY_NAME=${{ inputs.wallet-name }}"
                 echo "AKASH_GAS=auto"
-                echo "AKASH_GAS_ADJUSTMENT=1.25"
+                echo "AKASH_GAS_ADJUSTMENT=1.75"
                 echo "AKASH_GAS_PRICES=0.025uakt"
                 echo "AKASH_SIGN_MODE=amino-json"
               } >> "$GITHUB_ENV"

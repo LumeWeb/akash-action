@@ -23,7 +23,7 @@ runs:
           shell: bash
           run: |
               curl -sfL https://raw.githubusercontent.com/akash-network/provider/main/install.sh | bash
-              sudo mv ./bin/provider-services /usr/local/bin
+              sudo cp ./bin/provider-services /usr/local/bin
 
         - name: Clean Environment
           shell: bash

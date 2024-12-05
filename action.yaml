@@ -73,7 +73,9 @@ runs:
 
               # Clean up
               rm key-config
-
+        - name: Find Best RPC Node
+          uses: lumeweb/cosmos-best-rpc-action@v0.1.0
+          id: rpc
         - name: Setup Environment Variables
           shell: bash
           run: |
@@ -84,7 +86,7 @@ runs:
                 echo "AKASH_NET=$AKASH_NET"
                 echo "AKASH_VERSION=$(curl -s https://api.github.com/repos/akash-network/provider/releases/latest | jq -r '.tag_name')"
                 echo "AKASH_CHAIN_ID=$(curl -s "$AKASH_NET/chain-id.txt")"
-                echo "AKASH_NODE=$(curl -s "$AKASH_NET/rpc-nodes.txt" | shuf -n 1)"
+                echo "AKASH_NODE=${{ steps.rpc.outputs.best-node }}"
                 echo "AKASH_KEYRING_BACKEND=os"
                 echo "AKASH_KEY_NAME=${{ inputs.wallet-name }}"
                 echo "AKASH_GAS=auto"

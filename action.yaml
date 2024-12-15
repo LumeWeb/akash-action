@@ -74,7 +74,7 @@ runs:
               # Clean up
               rm key-config
         - name: Find Best RPC Node
-          uses: lumeweb/cosmos-best-rpc-action@v0.1.0
+          uses: lumeweb/cosmos-best-rpc-action@v0.1.1
           id: rpc
         - name: Setup Environment Variables
           shell: bash

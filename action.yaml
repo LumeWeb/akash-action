@@ -100,9 +100,7 @@ runs:
               } >> "$GITHUB_ENV"
               
               if [ ! -z "${{ inputs.depositor-account }}" ]; then
-                echo "AKASH_DEPOSITOR_ACCOUNT=${{ inputs.depositor-account }}" >> "$GITHUB_ENV"
-              else
-              
+                echo "AKASH_DEPOSITOR_ACCOUNT=${{ inputs.depositor-account }}" >> "$GITHUB_ENV"          
               fi
 
         - name: Create and Recover Account

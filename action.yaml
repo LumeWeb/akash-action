@@ -15,6 +15,9 @@ inputs:
     cert-id:
         description: 'Certificate ID to use for the PEM file name'
         required: true
+    depositor-account:
+        description: 'Depositor account address'
+        required: false
 
 runs:
     using: "composite"
@@ -93,7 +96,14 @@ runs:
                 echo "AKASH_GAS_ADJUSTMENT=1.75"
                 echo "AKASH_GAS_PRICES=0.025uakt"
                 echo "AKASH_SIGN_MODE=amino-json"
+                echo "AKASH_DEPOSITOR_ACCOUNT=${{ inputs.depositor-account }}"
               } >> "$GITHUB_ENV"
+              
+              if [ ! -z "${{ inputs.depositor-account }}" ]; then
+                echo "AKASH_DEPOSITOR_ACCOUNT=${{ inputs.depositor-account }}" >> "$GITHUB_ENV"
+              else
+              
+              fi
 
         - name: Create and Recover Account
           shell: bash

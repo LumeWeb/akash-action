@@ -18,6 +18,9 @@ inputs:
     depositor-account:
         description: 'Depositor account address'
         required: false
+    fee-account:
+        description: 'Fee account address'
+        required: false
 
 runs:
     using: "composite"
@@ -101,6 +104,10 @@ runs:
               
               if [ ! -z "${{ inputs.depositor-account }}" ]; then
                 echo "AKASH_DEPOSITOR_ACCOUNT=${{ inputs.depositor-account }}" >> "$GITHUB_ENV"          
+              fi
+              
+              if [ ! -z "${{ inputs.fee-account }}" ]; then
+                echo "AKASH_FEE_ACCOUNT=${{ inputs.fee-account }}" >> "$GITHUB_ENV"          
               fi
 
         - name: Create and Recover Account
